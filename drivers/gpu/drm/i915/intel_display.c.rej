@@ -1,0 +1,18 @@
+--- drivers/gpu/drm/i915/intel_display.c
++++ drivers/gpu/drm/i915/intel_display.c
+@@ -7067,7 +7067,6 @@
+ 	}
+ 
+ 	lpt_disable_clkout_dp(dev);
+-	intel_runtime_pm_disable_interrupts(dev);
+ 	hsw_disable_lcpll(dev_priv, true, true);
+ }
+ 
+@@ -7079,7 +7078,6 @@
+ 	DRM_DEBUG_KMS("Disabling package C8+\n");
+ 
+ 	hsw_restore_lcpll(dev_priv);
+-	intel_runtime_pm_restore_interrupts(dev);
+ 	lpt_init_pch_refclk(dev);
+ 
+ 	if (dev_priv->pch_id == INTEL_PCH_LPT_LP_DEVICE_ID_TYPE) {

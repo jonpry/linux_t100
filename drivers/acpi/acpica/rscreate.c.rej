@@ -1,0 +1,10 @@
+--- drivers/acpi/acpica/rscreate.c
++++ drivers/acpi/acpica/rscreate.c
+@@ -112,7 +112,6 @@
+ 
+ 	return (status);
+ }
+-ACPI_EXPORT_SYMBOL(acpi_buffer_to_resource);
+ 
+ /*******************************************************************************
+  *

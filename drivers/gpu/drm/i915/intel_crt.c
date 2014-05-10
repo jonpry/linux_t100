@@ -907,4 +907,6 @@ void intel_crt_init(struct drm_device *dev)
 	}
 
 	intel_crt_reset(connector);
+
+	intel_panel_setup_backlight(connector);
 }

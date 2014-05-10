@@ -1,0 +1,10 @@
+--- include/acpi/acpixf.h
++++ include/acpi/acpixf.h
+@@ -275,7 +275,6 @@
+ /*
+  * Handler interfaces
+  */
+-u32 acpi_get_serial_access_length(u32 accessor_type, u32 access_length);
+ acpi_status
+ acpi_install_initialization_handler(acpi_init_handler handler, u32 function);
+ 

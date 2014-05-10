@@ -151,9 +151,9 @@ static void __iomem *byt_gpio_reg(struct gpio_chip *chip, unsigned offset,
 
 static bool is_special_pin(struct byt_gpio *vg, unsigned offset)
 {
-	/* SCORE pin 92-93 */
+	/* SCORE pin 92-93; 41 for SDIO pwr_en bug  */
 	if (!strcmp(vg->range->name, BYT_SCORE_ACPI_UID) &&
-		offset >= 92 && offset <= 93)
+       ((offset >= 92 && offset <= 93) || (offset == 41)))
 		return true;
 
 	/* SUS pin 11-21 */
@@ -176,6 +176,10 @@ static int byt_gpio_request(struct gpio_chip *chip, unsigned offset)
 	 * But, some pins may have func pin mux 001 represents
 	 * GPIO function. Only allow user to export pin with
 	 * func pin mux preset as GPIO function by BIOS/FW.
+     *
+     * We do make an exception, however, for pin 41 which
+     * is needed in order to power up the SDIO bus (as per
+     * the intel erratum)
 	 */
 	value = readl(reg) & BYT_PIN_MUX;
 	special = is_special_pin(vg, offset);
@@ -184,7 +188,6 @@ static int byt_gpio_request(struct gpio_chip *chip, unsigned offset)
 			"pin %u cannot be used as GPIO.\n", offset);
 		return -EINVAL;
 	}
-
 	pm_runtime_get(&vg->pdev->dev);
 
 	return 0;

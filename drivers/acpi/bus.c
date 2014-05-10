@@ -132,6 +132,22 @@ void acpi_bus_private_data_handler(acpi_handle handle,
 }
 EXPORT_SYMBOL(acpi_bus_private_data_handler);
 
+int acpi_bus_attach_private_data(acpi_handle handle, void *data)
+{
+	acpi_status status;
+
+	status = acpi_attach_data(handle,
+			acpi_bus_private_data_handler, data);
+	if (ACPI_FAILURE(status)) {
+		ACPI_ERROR((AE_INFO, "Error attaching device[%p] data\n",
+				handle));
+		return -ENODEV;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(acpi_bus_attach_private_data);
+
 int acpi_bus_get_private_data(acpi_handle handle, void **data)
 {
 	acpi_status status;
@@ -141,7 +157,7 @@ int acpi_bus_get_private_data(acpi_handle handle, void **data)
 
 	status = acpi_get_data(handle, acpi_bus_private_data_handler, data);
 	if (ACPI_FAILURE(status) || !*data) {
-		ACPI_DEBUG_PRINT((ACPI_DB_INFO, "No context for object [%p]\n",
+		ACPI_ERROR((AE_INFO, "No context for object [%p]\n",
 				handle));
 		return -ENODEV;
 	}

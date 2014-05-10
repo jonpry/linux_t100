@@ -22,6 +22,7 @@
 #include <linux/scatterlist.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_runtime.h>
+#include <linux/gpio.h>
 
 #include <linux/leds.h>
 
@@ -1261,6 +1262,10 @@ static inline void sdhci_update_clock(struct sdhci_host *host)
 	sdhci_set_clock(host, clock);
 }
 
+static inline void sdhci_set_power_quirk(unsigned short power) {
+	gpio_set_value(SDHCI_POWER_QUIRK_GPIO, power);
+}
+
 static int sdhci_set_power(struct sdhci_host *host, unsigned short power)
 {
 	u8 pwr = 0;
@@ -1292,6 +1297,9 @@ static int sdhci_set_power(struct sdhci_host *host, unsigned short power)
 		sdhci_writeb(host, 0, SDHCI_POWER_CONTROL);
 		if (host->quirks2 & SDHCI_QUIRK2_CARD_ON_NEEDS_BUS_ON)
 			sdhci_runtime_pm_bus_off(host);
+		/* The intel Bay Trail SoCs need to assert a GPIO as a work around */
+		if (host->quirks2 & SDHCI_QUIRK2_BROKEN_POWER_ENABLE)
+			sdhci_set_power_quirk(0);
 		return 0;
 	}
 
@@ -1311,7 +1319,13 @@ static int sdhci_set_power(struct sdhci_host *host, unsigned short power)
 
 	pwr |= SDHCI_POWER_ON;
 
+
 	sdhci_writeb(host, pwr, SDHCI_POWER_CONTROL);
+
+	/* The intel Bay Trail SoCs need to assert a GPIO as a work around */
+	if (host->quirks2 & SDHCI_QUIRK2_BROKEN_POWER_ENABLE)
+		sdhci_set_power_quirk(1);
+
 
 	if (host->quirks2 & SDHCI_QUIRK2_CARD_ON_NEEDS_BUS_ON)
 		sdhci_runtime_pm_bus_on(host);
@@ -1734,9 +1748,16 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	struct sdhci_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
+
+        if (enable)
+              sdhci_runtime_pm_get(host);
+
 	spin_lock_irqsave(&host->lock, flags);
 	sdhci_enable_sdio_irq_nolock(host, enable);
 	spin_unlock_irqrestore(&host->lock, flags);
+
+        if (!enable)
+               sdhci_runtime_pm_put(host);
 }
 
 static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
@@ -2820,6 +2841,18 @@ int sdhci_add_host(struct sdhci_host *host)
 		host->flags &= ~SDHCI_USE_SDMA;
 	}
 
+    if ((host->quirks2 & SDHCI_QUIRK2_BROKEN_POWER_ENABLE)) {
+        printk("Using GPIO for power enable as it is marked broken\n");
+        if (gpio_request(SDHCI_POWER_QUIRK_GPIO, "SDIO_PWR_EN") < 0) {
+            printk("Unable to request GPIO. SDIO may be broken.");
+			host->quirks2 = host->quirks2 & ~SDHCI_QUIRK2_BROKEN_POWER_ENABLE;
+        }
+        else if (gpio_direction_output(SDHCI_POWER_QUIRK_GPIO, 0) < 0) {
+            printk("Unable to set GPIO direction. SDIO may be broken.");
+			host->quirks2 = host->quirks2 & ~SDHCI_QUIRK2_BROKEN_POWER_ENABLE;
+        }
+    }
+
 	if ((host->version >= SDHCI_SPEC_200) &&
 		(caps[0] & SDHCI_CAN_DO_ADMA2))
 		host->flags |= SDHCI_USE_ADMA;
@@ -3324,6 +3357,10 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 
 	tasklet_kill(&host->card_tasklet);
 	tasklet_kill(&host->finish_tasklet);
+
+    if (host->quirks2 & SDHCI_QUIRK2_BROKEN_POWER_ENABLE) {
+        gpio_free(SDHCI_POWER_QUIRK_GPIO);
+    }
 
 	if (host->vmmc) {
 		regulator_disable(host->vmmc);

@@ -1,0 +1,24 @@
+--- drivers/pinctrl/pinctrl-baytrail.c
++++ drivers/pinctrl/pinctrl-baytrail.c
+@@ -530,14 +511,19 @@
+ 	gc->can_sleep = false;
+ 	gc->dev = dev;
+ 
++	ret = gpiochip_add(gc);
++	if (ret) {
++		dev_err(&pdev->dev, "failed adding byt-gpio chip\n");
++		return ret;
++	}
++
+ 	/* set up interrupts  */
+ 	irq_rc = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+ 	if (irq_rc && irq_rc->start) {
+ 		hwirq = irq_rc->start;
+ 		gc->to_irq = byt_gpio_to_irq;
+ 
+-		vg->domain = irq_domain_add_simple(NULL, gc->ngpio,
+-						   vg->pin_irqbase,
++		vg->domain = irq_domain_add_linear(NULL, gc->ngpio,
+ 						   &byt_gpio_irq_ops, vg);
+ 		if (!vg->domain)
+ 			return -ENXIO;

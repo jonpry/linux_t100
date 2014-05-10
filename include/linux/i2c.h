@@ -82,6 +82,8 @@ extern s32 i2c_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 /* Now follow the 'nice' access routines. These also document the calling
    conventions of i2c_smbus_xfer. */
 
+extern s32 i2c_smbus_quick_write(const struct i2c_client *client);
+extern s32 i2c_smbus_quick_read(const struct i2c_client *client);
 extern s32 i2c_smbus_read_byte(const struct i2c_client *client);
 extern s32 i2c_smbus_write_byte(const struct i2c_client *client, u8 value);
 extern s32 i2c_smbus_read_byte_data(const struct i2c_client *client,
@@ -92,6 +94,10 @@ extern s32 i2c_smbus_read_word_data(const struct i2c_client *client,
 				    u8 command);
 extern s32 i2c_smbus_write_word_data(const struct i2c_client *client,
 				     u8 command, u16 value);
+extern s32 i2c_smbus_word_proc_call(const struct i2c_client *client,
+				    u8 command, u16 value);
+extern s32 i2c_smbus_block_proc_call(const struct i2c_client *client,
+				u8 command, u8 length, u8 *values);
 
 static inline s32
 i2c_smbus_read_word_swapped(const struct i2c_client *client, u8 command)
@@ -576,5 +582,18 @@ static inline struct i2c_adapter *of_find_i2c_adapter_by_node(struct device_node
 	return NULL;
 }
 #endif /* CONFIG_OF */
+
+#ifdef CONFIG_I2C_ACPI
+int acpi_i2c_install_space_handler(struct i2c_adapter *adapter);
+void acpi_i2c_remove_space_handler(struct i2c_adapter *adapter);
+void acpi_i2c_register_devices(struct i2c_adapter *adap);
+#else
+static inline void acpi_i2c_register_devices(struct i2c_adapter *adap) {};
+
+static inline void acpi_i2c_remove_space_handler(struct i2c_adapter *adapter)
+{ }
+static inline int acpi_i2c_install_space_handler(struct i2c_adapter *adapter)
+{ return 0; }
+#endif
 
 #endif /* _LINUX_I2C_H */
